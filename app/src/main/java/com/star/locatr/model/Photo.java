@@ -17,6 +17,12 @@ public class Photo {
     @SerializedName("owner")
     private String mOwner;
 
+    @SerializedName("latitude")
+    private double mLatitude;
+
+    @SerializedName("longitude")
+    private double mLongitude;
+
     public String getId() {
         return mId;
     }
@@ -47,5 +53,21 @@ public class Photo {
 
     public void setOwner(String owner) {
         mOwner = owner;
+    }
+
+    public double getLatitude() {
+        return mLatitude;
+    }
+
+    public void setLatitude(double latitude) {
+        mLatitude = latitude;
+    }
+
+    public double getLongitude() {
+        return mLongitude;
+    }
+
+    public void setLongitude(double longitude) {
+        mLongitude = longitude;
     }
 }

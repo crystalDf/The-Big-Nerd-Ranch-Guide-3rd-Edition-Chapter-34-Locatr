@@ -3,34 +3,42 @@ package com.star.locatr;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.RequestOptions;
+import com.bumptech.glide.request.target.SimpleTarget;
+import com.bumptech.glide.request.transition.Transition;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdate;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class LocatrFragment extends Fragment {
+public class LocatrFragment extends SupportMapFragment {
 
     private static final String TAG = "LocatrFragment";
 
@@ -41,10 +49,14 @@ public class LocatrFragment extends Fragment {
             Manifest.permission.ACCESS_COARSE_LOCATION
     };
 
-    private ImageView mImageView;
-    private ProgressBar mProgressBar;
-
     private GoogleApiClient mGoogleApiClient;
+
+    private GoogleMap mGoogleMap;
+
+    private Bitmap mMapBitmap;
+    private GalleryItem mMapGalleryItem;
+
+    private Location mCurrentLocation;
 
     public static LocatrFragment newInstance() {
         return new LocatrFragment();
@@ -76,17 +88,12 @@ public class LocatrFragment extends Fragment {
                 })
                 .addOnConnectionFailedListener(connectionResult -> Log.i(TAG, "Connection Failed"))
                 .build();
-    }
 
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        getMapAsync(googleMap -> {
+            mGoogleMap = googleMap;
 
-        View view = inflater.inflate(R.layout.fragment_locatr, container, false);
-
-        mImageView = view.findViewById(R.id.image);
-        mProgressBar = view.findViewById(R.id.fragment_progress_bar);
-
-        return view;
+            updateUI();
+        });
     }
 
     @Override
@@ -124,7 +131,6 @@ public class LocatrFragment extends Fragment {
         switch (item.getItemId()) {
             case R.id.action_locate:
                 findImage();
-                showProgressBar(true);
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
@@ -195,10 +201,42 @@ public class LocatrFragment extends Fragment {
         }
     }
 
+    private void updateUI() {
+        if (mGoogleMap == null || mMapBitmap == null) {
+            return;
+        }
+
+        LatLng itemPoint = new LatLng(mMapGalleryItem.getLat(), mMapGalleryItem.getLon());
+        LatLng myPoint = new LatLng(
+                mCurrentLocation.getLatitude(), mCurrentLocation.getLongitude());
+
+        BitmapDescriptor itemBitmap = BitmapDescriptorFactory.fromBitmap(mMapBitmap);
+        MarkerOptions itemMarker = new MarkerOptions()
+                .position(itemPoint)
+                .icon(itemBitmap);
+        MarkerOptions myMarker = new MarkerOptions()
+                .position(myPoint);
+
+        mGoogleMap.clear();
+        mGoogleMap.addMarker(itemMarker);
+        mGoogleMap.addMarker(myMarker);
+
+        LatLngBounds bounds = new LatLngBounds.Builder()
+                .include(itemPoint)
+                .include(myPoint)
+                .build();
+
+        int margin = getResources().getDimensionPixelSize(R.dimen.map_inset_margin);
+        CameraUpdate update = CameraUpdateFactory.newLatLngBounds(bounds, margin);
+        mGoogleMap.animateCamera(update);
+    }
+
     private class SearchTask extends AsyncTask<Location, Void, List<GalleryItem>> {
 
         @Override
         protected List<GalleryItem> doInBackground(Location... params) {
+
+            mCurrentLocation = params[0];
 
             return new FlickrFetchr().searchPhotos(params[0]);
         }
@@ -207,19 +245,12 @@ public class LocatrFragment extends Fragment {
         protected void onPostExecute(List<GalleryItem> items) {
 
             if (!items.isEmpty()) {
+                mMapGalleryItem = items.get(0);
+
                 bindGalleryItem(items.get(0));
+
+                updateUI();
             }
-
-            showProgressBar(false);
-        }
-    }
-
-    private void showProgressBar(boolean isShown) {
-
-        if (isShown) {
-            mProgressBar.setVisibility(View.VISIBLE);
-        } else {
-            mProgressBar.setVisibility(View.INVISIBLE);
         }
     }
 
@@ -232,6 +263,11 @@ public class LocatrFragment extends Fragment {
         Glide.with(getActivity())
                 .load(galleryItem.getUrl())
                 .apply(new RequestOptions().placeholder(R.drawable.emma))
-                .into(mImageView);
+                .into(new SimpleTarget<Drawable>() {
+                    @Override
+                    public void onResourceReady(Drawable resource, Transition<? super Drawable> transition) {
+                        mMapBitmap = ((BitmapDrawable)resource).getBitmap();
+                    }
+                });
     }
 }

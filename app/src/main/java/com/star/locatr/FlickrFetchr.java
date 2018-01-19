@@ -34,7 +34,7 @@ public class FlickrFetchr {
     private static final String NO_JSON_CALL_BACK_KEY = "nojsoncallback";
     private static final String NO_JSON_CALL_BACK_VALUE = "1";
     private static final String EXTRAS_KEY = "extras";
-    private static final String EXTRAS_VALUE = "url_s";
+    private static final String EXTRAS_VALUE = "url_s,geo";
     private static final String PAGE_KEY = "page";
 
     private static final String LAT = "lat";
@@ -153,6 +153,8 @@ public class FlickrFetchr {
             if (photo.getUrlS() != null) {
                 item.setUrl(photo.getUrlS());
                 item.setOwner(photo.getOwner());
+                item.setLat(photo.getLatitude());
+                item.setLon(photo.getLongitude());
                 items.add(item);
             }
         }
